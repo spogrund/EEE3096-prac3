@@ -4,6 +4,7 @@ import random
 from ES2EEPROMUtils import ES2EEPROM
 import os
 import time
+from gpiozero import Buzzer
 # some global variables that need to change as we run the program
 end_of_game = None  # set if the user wins or ends the game
 
@@ -13,7 +14,7 @@ LED = [11,13,15]
 LED_accuracy = 32
 btn_submit = 16
 btn_increase = 18
-buzzer = 33
+buzzerPin = 33
 eeprom = None
 Menu = False
 end_of_game = None
@@ -89,17 +90,17 @@ def setup():
     GPIO.output(LED[1], GPIO.LOW)
     GPIO.output(LED[2], GPIO.LOW)
     GPIO.output(LED_accuracy, GPIO.LOW)
-    GPIO.setup(buzzer, GPIO.OUT)
+#    GPIO.setup(buzzer, GPIO.OUT)
 
 
     # Setup PWM channel
     if buz is None:
-        buz  = GPIO.PWM(buzzer,1000)
+        buz  = Buzzer("BOARD" + str(buzzerPin))
     if acc is None:
        acc = GPIO.PWM(LED_accuracy,50)
 	
 	
-    buz.start(0)
+   # buz.start(0)
     acc.start(0)
 #    Setup debouncing and callbacks
     GPIO.setup(btn_increase, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -116,18 +117,18 @@ def fetch_scores():
     # get however many scores there are
     
     # Get the scores
-    tscores = []
+    tempScores = []
     scores = ES2EEPROM.read_block(eeprom,0,13)
     score_count  = scores[0]
-    tname = ""
+    tempName = ""
     # convert the codes back to ascii
     for j in range(1,len(scores)):
-        if (j)%4 ==0:
-            tscores.append([tname,scores[j]])
-            tname = ""
+        if j%4 ==0:
+            tempScores.append([tempName,scores[j]])
+            tempName = ""
         else:
-            tname += chr(scores[j])
-    scores = tscores
+            tempName += chr(scores[j])
+    scores = tempScores
 	
     # return back the results
     return score_count, scores
@@ -216,7 +217,7 @@ def btn_increase_pressed(channel):
 # Guess button
 def btn_guess_pressed(channel):
     # If they've pressed and held the button, clear up the GPIO and take them back to the menu screen
-    global guessNumber,answer,back, submit,Menu,GameScore,end_of_game,name
+    global guessNumber,answer,back, submit,Menu,GameScore,end_of_game,name, Brightness
     print("guess")
     start = time.time()
     submit = True
@@ -228,7 +229,7 @@ def btn_guess_pressed(channel):
         if length >1:
             print("returning to menu")
             GPIO.cleanup()
-
+            
             setup()
             
             menu()
@@ -242,10 +243,11 @@ def btn_guess_pressed(channel):
     if guessNumber != value and not Menu:
        # print("here")
         accuracy_leds()
-        trigger_buzzer()
+        print("LED brightness is " + str(Brightness) +" %")
+ #       trigger_buzzer()
         GameScore += 1
     elif guessNumber== value and not Menu:
-        
+        print("correct, you took " + str(GameScore) + " guesses")
         name = input("you won, whats your name? \n")
         name = name.upper()
         while not end_of_game:
@@ -272,7 +274,7 @@ def btn_guess_pressed(channel):
 
 # LED Brightness
 def accuracy_leds():
-    global acc, submit,value,guessNumber
+    global acc, submit,value,guessNumber, Brightness
     # Set the brightness of the LED based on how close the guess is to the answer
     Brightness = 0
     if (guessNumber<value) and (submit == True):
@@ -289,31 +291,21 @@ def accuracy_leds():
 # Sound Buzzer
 def trigger_buzzer():
     # The buzzer operates differently from the LED
-    global buzzer,submit,value,guessNumber
+    global buzzer,submit,buz,value,guessNumber
     offset = abs(value-guessNumber)
-    buz.start(50)
+    
     if (offset ==1) and (submit==True):
-        buz.ChangeFrequency(4)
-#        GPIO.output(buzzer,GPIO.HIGH)
- #       time.sleep(0.25)
-  #      GPIO.output(buzzer, GPIO.LOW)
+       buz.beep(on_time=0.1, off_time=0.25) 
     elif (offset ==2) and (submit == True):
-        buz.ChangeFrequency(2)
- #       GPIO.output(buzzer,GPIO.HIGH)
-  #      time.sleep(0.5)
-   #     GPIO.output(buzzer,GPIO.LOW)
+        buz.beep(on_time=0.1, off_time=0.5)
     elif (offset ==3) and (submit == True):
-        buz.ChangeFrequency(1)
-   #     GPIO.output(buzzer,GPIO.HIGH)
-   #     time.sleep(1)
-   #     GPIO.output(buzzer,GPIO.LOW)
+       buz.beep(on_time=0.1, off_time=1)
     # While we want the brightness of the LED to change(duty cycle), we want the frequency of the buzzer to change
     # The buzzer duty cycle should be left at 50%
     # If the user is off by an absolute value of 3, the buzzer should sound once every second
     # If the user is off by an absolute value of 2, the buzzer should sound twice every second
     # If the user is off by an absolute value of 1, the buzzer should sound 4 times a second
     pass
-
 
 if __name__ == "__main__":
     try:
