@@ -90,17 +90,17 @@ def setup():
     GPIO.output(LED[1], GPIO.LOW)
     GPIO.output(LED[2], GPIO.LOW)
     GPIO.output(LED_accuracy, GPIO.LOW)
-#    GPIO.setup(buzzer, GPIO.OUT)
+    GPIO.setup(buzzerPin, GPIO.OUT)
 
 
     # Setup PWM channel
     if buz is None:
-        buz  = Buzzer("BOARD" + str(buzzerPin))
+        buz  = GPIO.PWM(buzzerPin,50)
     if acc is None:
        acc = GPIO.PWM(LED_accuracy,50)
 	
 	
-   # buz.start(0)
+    buz.start(0)
     acc.start(0)
 #    Setup debouncing and callbacks
     GPIO.setup(btn_increase, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -293,13 +293,13 @@ def trigger_buzzer():
     # The buzzer operates differently from the LED
     global buzzer,submit,buz,value,guessNumber
     offset = abs(value-guessNumber)
-    
+    buz.start(50)
     if (offset ==1) and (submit==True):
-       buz.beep(on_time=0.1, off_time=0.25) 
+        buz.ChangeFrequency(4)       
     elif (offset ==2) and (submit == True):
-        buz.beep(on_time=0.1, off_time=0.5)
+        buz.ChangeFrequency(2)
     elif (offset ==3) and (submit == True):
-       buz.beep(on_time=0.1, off_time=1)
+       buz.ChangeFrequency(1)
     # While we want the brightness of the LED to change(duty cycle), we want the frequency of the buzzer to change
     # The buzzer duty cycle should be left at 50%
     # If the user is off by an absolute value of 3, the buzzer should sound once every second
